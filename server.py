@@ -104,6 +104,11 @@ def handle_request(msg: Dict[str, Any], cache: LRUCache) -> Dict[str, Any]:
             if not expr or not isinstance(expr, str):
                 return {"ok": False, "error": "Bad request: 'expr' is required (string)"}
             res = safe_eval_expr(expr)
+            # added
+            if res is None:
+                return {"ok": False, "error": "Bad request: 'expr' is not a valid expression"}
+            return {"ok": True, "result": res, "meta": {"from_cache": False, "took_ms": int((time.time()-started)*1000)}}
+
         elif mode == "gpt":
             prompt = data.get("prompt")
             if not prompt or not isinstance(prompt, str):
@@ -156,47 +161,60 @@ def handle_client(conn: socket.socket, addr, cache: LRUCache):
 
 def server_socket():
     # serverName = "MyServerSocket"
-    serverPort = 5000
+    serverPort = 5555
     serverSocket = socket.socket(AF_INET, SOCK_STREAM)
     serverSocket.bind(('0.0.0.0',serverPort))
     serverSocket.listen(1)
-    print ("Server is listening")
+    print ("Server is listening and waiting for connection")
     while True:
         connectionSocket, address = serverSocket.accept()
-        with (connectionSocket):
-            while True:
-                prompt = ("Enter the number of the desired operation:"
-                          "1. Expression"
-                          "2. Proxy"
-                          "3. Stop").encode()
-                connectionSocket.send(prompt)
-                input = connectionSocket.recv(1024).decode()
+        with connectionSocket:
 
-                if input == 1:
-                    connectionSocket.send("Enter expression:".encode())
-                    expression = connectionSocket.recv(1024).decode()
-                    # expression = json.loads(expression)
-                    result = safe_eval_expr(expression)
-                    if result is not None:
-                        result_string = {"ok": true, "result": f"{result}", "meta": {"from_cache": false, "took_ms": 7}}
-                    else:
-                        result_string = {"ok": false, "result": "Failed"}
-                    connectionSocket.send(json.dumps(result_string).encode())
+            payload = connectionSocket.recv(4096).decode("utf-8")
+            if payload["mode"] == "stop":
+                break
 
-                elif input == 2:
-                    connectionSocket.send("Proxy:".encode())
-                    expression = connectionSocket.recv(1024).decode()
-
-                elif input == 3:
-                    break
-
+            elif payload["mode"] == "calc":
+                result = safe_eval_expr(payload["expr"])
+                if result is not None:
+                    connectionSocket.sendall((json.dumps(result) + "\n").encode("utf-8"))
                 else:
-                    print ("Invalid input, try again")
+                    print ("not okay")
 
-            if input == 3:
-                connectionSocket.close()
 
-            elif connectionSocket.
+            # while True:
+            #     prompt = ("Enter the number of the desired operation:"
+            #               "1. Expression"
+            #               "2. Proxy"
+            #               "3. Stop").encode()
+            #     connectionSocket.send(prompt)
+            #     input = connectionSocket.recv(4096).decode()
+            #
+            #     if input == 1:
+            #         connectionSocket.send("Enter expression:".encode())
+            #         expression = connectionSocket.recv(1024).decode()
+            #         # expression = json.loads(expression)
+            #         result = safe_eval_expr(expression)
+            #         if result is not None:
+            #             result_string = {"ok": true, "result": f"{result}", "meta": {"from_cache": false, "took_ms": 7}}
+            #         else:
+            #             result_string = {"ok": false, "result": "Failed"}
+            #         connectionSocket.send(json.dumps(result_string).encode())
+            #
+            #     elif input == 2:
+            #         connectionSocket.send("Proxy:".encode())
+            #         expression = connectionSocket.recv(1024).decode()
+            #
+            #     elif input == 3:
+            #         break
+            #
+            #     else:
+            #         print ("Invalid input, try again")
+            #
+            # if input == 3:
+            #     connectionSocket.close()
+            #
+            # elif connectionSocket.
 
 
     connectionSocket.close()
