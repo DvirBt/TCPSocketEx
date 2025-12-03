@@ -66,7 +66,14 @@ def safe_eval_expr(expr: str) -> float:
     """Parse and evaluate the expression safely using ast (no eval)."""
     tree = ast.parse(expr, mode="eval")
 
-    return float(_eval_node(tree.body))
+    # check validation
+    try:
+        result = float(_eval_node(tree.body))
+    except ValueError:
+        result = None
+
+    return result
+
 
 # ---------------- GPT Call (stub by default) ----------------
 def call_gpt(prompt: str) -> str:
@@ -148,7 +155,7 @@ def handle_client(conn: socket.socket, addr, cache: LRUCache):
 
 
 def server_socket():
-    serverName = "MyServerSocket"
+    # serverName = "MyServerSocket"
     serverPort = 5000
     serverSocket = socket.socket(AF_INET, SOCK_STREAM)
     serverSocket.bind(('0.0.0.0',serverPort))
@@ -156,12 +163,12 @@ def server_socket():
     print ("Server is listening")
     while True:
         connectionSocket, address = serverSocket.accept()
-        with connectionSocket:
+        with (connectionSocket):
             while True:
                 prompt = ("Enter the number of the desired operation:"
                           "1. Expression"
                           "2. Proxy"
-                          "3. Stop").encode("utf-8")
+                          "3. Stop").encode()
                 connectionSocket.send(prompt)
                 input = connectionSocket.recv(1024).decode()
 
@@ -169,7 +176,12 @@ def server_socket():
                     connectionSocket.send("Enter expression:".encode())
                     expression = connectionSocket.recv(1024).decode()
                     # expression = json.loads(expression)
-                    safe_eval_expr(expression)
+                    result = safe_eval_expr(expression)
+                    if result is not None:
+                        result_string = {"ok": true, "result": f"{result}", "meta": {"from_cache": false, "took_ms": 7}}
+                    else:
+                        result_string = {"ok": false, "result": "Failed"}
+                    connectionSocket.send(json.dumps(result_string).encode())
 
                 elif input == 2:
                     connectionSocket.send("Proxy:".encode())

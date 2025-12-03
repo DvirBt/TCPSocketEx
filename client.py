@@ -16,8 +16,6 @@ def client_socket():
         if not data:
             break
 
-        elif data ==
-
 
     clientSocket.close()
 
