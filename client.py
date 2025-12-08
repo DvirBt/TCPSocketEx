@@ -36,21 +36,21 @@ def create_socket(host, port):
 
 
 def get_args() -> dict:
-    print ("Enter args")
-    mode = input("Enter mode calc / gpt / stop")
+    print ("Enter args \n")
+    mode = input("Enter mode calc / gpt / stop \n")
 
     if mode == "stop":
         return {"mode": "stop"}
 
-    no_cache = input("Enter y to diable cache, otherwise - not disabled")
+    no_cache = input("Enter y to disable cache, otherwise - not disabled \n")
     # if cache == "y":
 
     if mode == "calc":
-        expression = input("Enter expression")
+        expression = input("Enter expression \n")
         payload = {"mode": "calc", "data": {"expr": expression}, "options": {"cache": not no_cache}}
 
     elif mode == "gpt":
-        prompt = input("Enter prompt to chatGPT")
+        prompt = input("Enter prompt to chatGPT \n")
         payload = {"mode": "gpt", "data": {"prompt": prompt}, "options": {"cache": not no_cache}}
 
     else:
@@ -110,11 +110,14 @@ def main():
     while True:
         payload = get_args()
         if payload["mode"] == "stop":
+            print ("Client entered stop")
             break
 
         elif payload["mode"] == "unknown":
+            print ("Client entered unknown mode")
             pass
         else:
+            print ("request is processing in the server")
             request(client_socket, payload)
 
     client_socket.close()
