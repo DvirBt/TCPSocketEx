@@ -7,12 +7,14 @@ from server import LRUCache
 def get_from_cache(client_request, cache_data):
     print ("Trying to get from cache")
     try:
-        data = json.loads(client_request.decode("utf-8"))
-        mode = data.get("mode")
-
+        json_data = json.loads(client_request.decode("utf-8"))
+        mode = json_data.get("mode")
+        print ("Mode: ", mode)
+        print (json_data)
         if mode == "calc":
             # true means we got a hit in the cache
-            expr = data.get("expr")
+            expr = json_data.get("data").get("expr")
+            print (expr)
             if expr in cache_data and cache_data[expr] is not None:
                 print ("Found in cache")
                 return cache_data[expr], True
@@ -22,7 +24,7 @@ def get_from_cache(client_request, cache_data):
                 return expr, False
 
         elif mode == "gpt":
-            prompt = data.get("prompt")
+            prompt = json_data.get("prompt")
             if prompt in cache_data and cache_data[prompt] is not None:
                 print ("Found in cache")
                 return cache_data[prompt], True # maybe save the whole json?
@@ -35,17 +37,17 @@ def get_from_cache(client_request, cache_data):
         else:
             return None
 
-    except KeyError:
-        print ("Error")
-        raise Exception("Error")
-
-    except json.JSONDecodeError:
-        raise Exception("Invalid json decode")
+    except Exception:
+        print ("Exception in get data from cache")
+        raise Exception
 
 
 def save_to_cache(request, answer, cache_data):
     print ("Saved to cache")
-    cache_data[request] = answer
+    try:
+        cache_data[request] = answer.decode("utf-8")
+    except:
+        print ("Could not save to cache")
 
 
 def pipe(src, dst, key = None, save = False, cache_data = None):
@@ -88,13 +90,14 @@ def main():
         print(f"[proxy] {args.listen_host}:{args.listen_port} -> {args.server_host}:{args.server_port}")
         while True:
             c, addr = s.accept()
+            print("Connection established")
             threading.Thread(target=handle, args=(c, args.server_host, args.server_port, cache_data), daemon=True).start()
 
 
 def recv_until_newline(sock):
     buffer = b""
     while True:
-        chunk = sock.recv(4096)
+        chunk = sock.recv(1024)
         if not chunk:
             return None
 
@@ -106,16 +109,20 @@ def recv_until_newline(sock):
 
 
 def handle(c, sh, sp, cache_data):
-
+    server_socket = None
     try:
-        server_socket = None
         while True:
             request_key = None
             first_data = recv_until_newline(c)
             if not first_data:
-                return
+                break
             try:
                 hit = get_from_cache(first_data, cache_data)
+                if hit is None:
+                    print ("Hit is None")
+                    break
+                else:
+                    print (f"Hit: {hit[0]}, {hit[1]}")
                 if hit[0] is not None and hit[1] is True:
                     print ("Found in cache, returning to client")
                     c.send(hit[0].encode("utf-8"))
@@ -129,8 +136,8 @@ def handle(c, sh, sp, cache_data):
             except Exception:
                 pass
 
-
             try:
+                print ("Server logic")
                 if server_socket is None:
                     server_socket = socket.create_connection((sh, sp))
 
