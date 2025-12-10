@@ -15,22 +15,25 @@ def get_from_cache(client_request, cache_data):
             # true means we got a hit in the cache
             expr = json_data.get("data").get("expr")
             print (expr)
-            if expr in cache_data and cache_data[expr] is not None:
+            result = cache_data.get(expr)
+            if result is not None:
                 print ("Found in cache")
-                return cache_data[expr], True
+                return result, True
             else:
                 print ("Not found in cache")
-                cache_data[expr] = None
+                cache_data.set(expr, None)
                 return expr, False
 
         elif mode == "gpt":
             prompt = json_data.get("prompt")
-            if prompt in cache_data and cache_data[prompt] is not None:
+            print (prompt)
+            result = cache_data.get(prompt)
+            if prompt is not None:
                 print ("Found in cache")
-                return cache_data[prompt], True # maybe save the whole json?
+                return result, True # maybe save the whole json?
             else:
                 print ("Not found in cache")
-                cache_data[prompt] = None
+                cache_data.set(prompt, None)
                 return prompt, False
 
         # an invalid json mode input (consider stop and unknown)
@@ -42,10 +45,10 @@ def get_from_cache(client_request, cache_data):
         raise Exception
 
 
-def save_to_cache(request, answer, cache_data):
+def save_to_cache(key, answer, cache_data):
     print ("Saved to cache")
     try:
-        cache_data[request] = answer.decode("utf-8")
+        cache_data.set(key, answer.decode("utf-8"))
     except:
         print ("Could not save to cache")
 
